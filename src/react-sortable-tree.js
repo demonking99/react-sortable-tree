@@ -6,8 +6,11 @@ import withScrolling, {
 import isEqual from 'lodash.isequal';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
-import { DndContext, DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { DndContext } from 'react-dnd';
+import { DndProvider, createTransition } from "react-dnd-multi-backend";
+import KeyboardBackend,
+        { isKeyboardDragTrigger } from "react-dnd-accessible-backend";
+import MouseBackEnd from "react-dnd-mouse-backend";
 import { polyfill } from 'react-lifecycles-compat';
 import { AutoSizer, List } from 'react-virtualized';
 import 'react-virtualized/styles.css';
@@ -36,6 +39,37 @@ import {
   toggleExpandedForAll,
   walk,
 } from './utils/tree-data-utils';
+
+const KeyboardTransition = createTransition("keydown", (event) => {
+  if (!isKeyboardDragTrigger(event)) { return false; }
+  event.preventDefault();
+  return true;
+});
+
+const MouseTransition = createTransition("mousedown", (event) => {
+  if (event.type.indexOf("touch") !== -1 || event.type.indexOf("mouse") === -1) { return false; }
+  return true;
+});
+
+const DND_OPTIONS = {
+  backends: [
+    {
+      backend: MouseBackEnd,
+      id: "html5",
+      transition: MouseTransition,
+    },
+    {
+      backend: KeyboardBackend,
+      context: { window, document },
+      id: "keyboard",
+      options: {
+        announcerClassName: "announcer",
+      },
+      preview: true,
+      transition: KeyboardTransition,
+    },
+  ],
+};
 
 let treeIdCounter = 1;
 
@@ -949,7 +983,7 @@ const SortableTreeWithoutDndContext = props => (
 );
 
 const SortableTree = props => (
-  <DndProvider backend={HTML5Backend}>
+  <DndProvider options={DND_OPTIONS}>
     <SortableTreeWithoutDndContext {...props} />
   </DndProvider>
 );
